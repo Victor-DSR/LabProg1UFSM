@@ -49,6 +49,7 @@ PC = 14
 
 LINGUAGEM DE MAQUINA
 LINGUAGEM DE MONTAGEM
+LINGUAGEM DE ALTO NIVEL
 
 ------------------------------------------------------------------------------------------------------------------------ ANOTAÇÕES DA AULA 
 
