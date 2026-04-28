@@ -52,5 +52,31 @@ LINGUAGEM DE MONTAGEM
 LINGUAGEM DE ALTO NIVEL
 
 ------------------------------------------------------------------------------------------------------------------------ ANOTAÇÕES DA AULA 
+#include <stdio.h>
+#include <math.h>
+
+int main()
+{
+    int a, b, c, delta;
+    double x,xx;
+    
+    while(1){
+    printf("Digite os valores de a,b e c: ");
+    scanf("%d %d %d", &a, &b, &c);
+        
+    delta = pow(b,2) - (4*a*c);
+    
+        if(delta < 0){
+        printf("Não existe raiz de número negativo.\n\n");
+        } else {
+        x = ((-b) + sqrt(delta))/(2*a);
+        xx = ((-b) - sqrt(delta))/(2*a);
+        printf("X' = %.1f\n", x);
+        printf("X'' = %.1f", xx);
+        printf("\n\n");
+        }
+    }
+    return 0;
+}
 
 ------------------------------------------------------------------------------------------------------------------------ EXERCICIOS DE AULA
