@@ -1,0 +1,792 @@
+#include <GL/glut.h>
+#include <GL/freeglut_ext.h>
+#include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
+#include "gl_canvas2d.h"
+#include "auxiliar.h"
+#define VAZIO 0
+#define BRANCA 1
+#define PRETA 2
+#define DAMA_BRANCA 3
+#define DAMA_PRETA 4
+
+bool tabuleiroP = true;
+bool jogoFinalizado = false;
+int posQuadradoX = 150;
+int posQuadradoY = 150;
+int screenWidth = 800, screenHeight = 600;
+int **tabuleiro;
+int tamanho = 8;
+int mouseX = 0;
+int mouseY = 0;
+int botaoX = 0;
+int botaoY = 550;
+int botaoLargura = 100;
+int botaoAltura = 40;
+int cursorLinha = 0;
+int cursorColuna = 0;
+bool pecaSelecionada = false;
+int origemLinha;
+int origemColuna;
+int jogadorAtual = 1;
+
+void criaTabuleiro(int n){
+    tabuleiro = (int**) malloc(n * sizeof(int*));
+
+    for(int i = 0; i < n; i++)
+    {
+        tabuleiro[i] = (int*) malloc(n * sizeof(int));
+    }
+
+    for(int i = 0; i < n; i++)
+    {
+        for(int j = 0; j < n; j++)
+        {
+            tabuleiro[i][j] = 0;
+        }
+    }
+}
+void liberaTabuleiro(int n){
+    if(tabuleiro == NULL)
+        return;
+
+    for(int i = 0; i < n; i++)
+    {
+        free(tabuleiro[i]);
+    }
+
+    free(tabuleiro);
+
+    tabuleiro = NULL;
+}
+void desenhaBotao(){
+    CV::color(0.7, 0.7, 0.7);
+    CV::rectFill(
+        botaoX,
+        botaoY,
+        botaoX + botaoLargura,
+        botaoY + botaoAltura
+    );
+
+    CV::color(0, 0, 0);
+    CV::rect(
+        botaoX,
+        botaoY,
+        botaoX + botaoLargura,
+        botaoY + botaoAltura
+    );
+
+    if(tabuleiroP)
+    CV::text(botaoX + 15, botaoY + 15, "Tamanho");
+}
+void trocaTabuleiro(){
+    liberaTabuleiro(tamanho);
+
+    if(tamanho == 8)
+        tamanho = 12;
+    else
+        tamanho = 8;
+
+    criaTabuleiro(tamanho);
+}
+void desenhaTabuleiro(){
+    int casa = 50;
+
+    int x0 = 150;
+    int y0 = 0.5;
+
+    for(int linha = 0; linha < tamanho; linha++)
+    {
+        for(int coluna = 0; coluna < tamanho; coluna++)
+        {
+            int x = x0 + coluna*casa;
+            int y = y0 + linha*casa;
+
+            if((linha+coluna)%2==0)
+                CV::color(0.9,0.9,0.9);
+            else
+                CV::color(0.3,0.3,0.3);
+
+            CV::rectFill(
+                x,
+                y,
+                x+casa,
+                y+casa
+            );
+        }
+    }
+
+    CV::color(0,0,0);
+
+    CV::rect(
+        x0,
+        y0,
+        x0+tamanho*casa,
+        y0+tamanho*casa
+    );
+}
+void inicializaPecas(){
+    int linhasPecas = (tamanho / 2) - 1;
+
+    for(int i = 0; i < tamanho; i++)
+    {
+        for(int j = 0; j < tamanho; j++)
+        {
+            tabuleiro[i][j] = 0;
+        }
+    }
+
+    for(int i = 0; i < linhasPecas; i++)
+    {
+        for(int j = 0; j < tamanho; j++)
+        {
+            if((i+j)%2 == 1)
+                tabuleiro[i][j] = 2;
+        }
+    }
+
+    for(int i = tamanho-linhasPecas; i < tamanho; i++)
+    {
+        for(int j = 0; j < tamanho; j++)
+        {
+            if((i+j)%2 == 1)
+                tabuleiro[i][j] = 1;
+        }
+    }
+}
+void aumentaTabuleiro(){
+    liberaTabuleiro(tamanho);
+
+    tamanho += 2;
+
+    if(tamanho > 12)
+        tamanho = 8;
+
+    criaTabuleiro(tamanho);
+    inicializaPecas();
+}
+void desenhaPecas(){
+    int casa = 50;
+
+    int x0 = 150;
+    int y0 = 0.5;
+
+    for(int linha = 0; linha < tamanho; linha++)
+    {
+        for(int coluna = 0; coluna < tamanho; coluna++)
+        {
+            if(tabuleiro[linha][coluna] == 0)
+                continue;
+
+            float centroX =
+                x0 + coluna*casa + casa/2.0f;
+
+            float centroY =
+                y0 + linha*casa + casa/2.0f;
+
+            float raio = casa*0.35f;
+
+            if(tabuleiro[linha][coluna] == 1)
+            {
+                CV::color(0,0,1);
+                CV::circleFill(
+                    centroX,
+                    centroY,
+                    raio,
+                    30
+                );
+
+                CV::color(0,0,1);
+                CV::circle(
+                    centroX,
+                    centroY,
+                    raio,
+                    30
+                );
+            }
+
+            if(tabuleiro[linha][coluna] == 2){
+                CV::color(1,0,0);
+                CV::circleFill(
+                    centroX,
+                    centroY,
+                    raio,
+                    30
+                );
+
+                CV::color(1,0,0);
+                CV::circle(
+                    centroX,
+                    centroY,
+                    raio,
+                    30
+                );
+            }
+            if(tabuleiro[linha][coluna] == DAMA_BRANCA){
+                CV::color(1,1,1);
+
+                CV::circle(
+                    centroX,
+                    centroY,
+                    raio*0.5,
+                    20
+                );
+            }
+            if(tabuleiro[linha][coluna] == DAMA_PRETA){
+                CV::color(1,1,1);
+                CV::circle(
+                    centroX,
+                    centroY,
+                    raio*0.5,
+                    20
+    );
+            }
+        }
+    }
+}
+void desenhaCursor(){
+    int casa = 50;
+
+    int x0 = 150;
+    int y0 = 0;
+
+    int x = x0 + cursorColuna * casa;
+    int y = y0 + cursorLinha * casa;
+
+    if(pecaSelecionada)
+        CV::color(0,1,0); // verde
+    else
+        CV::color(1,1,0); // amarelo
+
+    CV::rect(
+        x+2,
+        y+2,
+        x+casa-2,
+        y+casa-2
+    );
+}
+bool ehBranca(int p){
+    return p == BRANCA || p == DAMA_BRANCA;
+}
+bool ehPreta(int p){
+    return p == PRETA || p == DAMA_PRETA;
+}
+bool ehInimigo(int minhaPeca, int outra){
+    if(ehBranca(minhaPeca))
+        return ehPreta(outra);
+
+    return ehBranca(outra);
+}
+bool movimentoSimplesValido(int origemL,int origemC,int destinoL,int destinoC,int peca){
+    if(tabuleiro[destinoL][destinoC] != VAZIO)
+        return false;
+
+    int dl = destinoL - origemL;
+    int dc = abs(destinoC - origemC);
+
+    if(dc != 1)
+        return false;
+
+    if(peca == BRANCA)
+        return dl == -1;
+
+    if(peca == PRETA)
+        return dl == 1;
+
+   if(peca == DAMA_BRANCA ||
+   peca == DAMA_PRETA)
+{
+    int dl = destinoL - origemL;
+    int dc = destinoC - origemC;
+
+    if(abs(dl) != abs(dc))
+        return false;
+
+    int passoL = (dl > 0) ? 1 : -1;
+    int passoC = (dc > 0) ? 1 : -1;
+
+    int l = origemL + passoL;
+    int c = origemC + passoC;
+
+    while(l != destinoL)
+    {
+        if(tabuleiro[l][c] != VAZIO)
+            return false;
+
+        l += passoL;
+        c += passoC;
+    }
+
+    return true;
+}
+return false;
+}
+bool capturaDamaValida(int origemL,int origemC,int destinoL,int destinoC,int peca,int *capturaL,int *capturaC){
+    if(tabuleiro[destinoL][destinoC] != VAZIO)
+        return false;
+
+    int dl = destinoL - origemL;
+    int dc = destinoC - origemC;
+
+    if(abs(dl) != abs(dc))
+        return false;
+
+    int passoL = (dl > 0) ? 1 : -1;
+    int passoC = (dc > 0) ? 1 : -1;
+
+    int l = origemL + passoL;
+    int c = origemC + passoC;
+
+    int inimigos = 0;
+
+    while(l != destinoL)
+    {
+        if(tabuleiro[l][c] != VAZIO)
+        {
+            if(ehInimigo(peca, tabuleiro[l][c]))
+            {
+                inimigos++;
+
+                *capturaL = l;
+                *capturaC = c;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        l += passoL;
+        c += passoC;
+    }
+
+    return inimigos == 1;
+}
+bool capturaValida(int origemL,int origemC,int destinoL,int destinoC,int peca){
+    if(tabuleiro[destinoL][destinoC] != VAZIO)
+        return false;
+
+    int dl = destinoL - origemL;
+    int dc = destinoC - origemC;
+
+    if(abs(dl) != 2 || abs(dc) != 2)
+        return false;
+
+    int meioL = (origemL + destinoL)/2;
+    int meioC = (origemC + destinoC)/2;
+
+    int alvo = tabuleiro[meioL][meioC];
+
+    if(!ehInimigo(peca, alvo))
+        return false;
+
+    if(peca == BRANCA)
+        return dl == -2;
+
+    if(peca == PRETA)
+        return dl == 2;
+
+    return true;
+}
+bool existeCapturaParaPeca(int linha,int coluna){
+    int peca = tabuleiro[linha][coluna];
+
+    if(peca == DAMA_BRANCA ||
+       peca == DAMA_PRETA)
+    {
+        for(int dl=-1; dl<=1; dl+=2)
+        {
+            for(int dc=-1; dc<=1; dc+=2)
+            {
+                for(int dist=2;
+                    dist<tamanho;
+                    dist++)
+                {
+                    int nl =
+                        linha + dl*dist;
+
+                    int nc =
+                        coluna + dc*dist;
+
+                    if(nl < 0 ||
+                       nl >= tamanho ||
+                       nc < 0 ||
+                       nc >= tamanho)
+                    {
+                        break;
+                    }
+
+                    int l;
+                    int c;
+
+                    if(capturaDamaValida(linha
+                                         ,coluna,
+                                         nl,
+                                         nc,
+                                         peca,
+                                         &l,
+                                         &c))
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return false;
+    }
+
+    int dl[] = {-2,-2,2,2};
+    int dc[] = {-2,2,-2,2};
+
+    for(int i=0;i<4;i++)
+    {
+        int nl = linha + dl[i];
+        int nc = coluna + dc[i];
+
+        if(nl < 0 ||
+           nl >= tamanho ||
+           nc < 0 ||
+           nc >= tamanho)
+            continue;
+
+        if(capturaValida(
+            linha,
+            coluna,
+            nl,
+            nc,
+            peca))
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+bool jogadorTemCaptura(){
+    for(int l=0;l<tamanho;l++)
+    {
+        for(int c=0;c<tamanho;c++)
+        {
+            int p = tabuleiro[l][c];
+
+            if(jogadorAtual == 1 &&
+               ehBranca(p))
+            {
+                if(existeCapturaParaPeca(l,c))
+                    return true;
+            }
+
+            if(jogadorAtual == 2 &&
+               ehPreta(p))
+            {
+                if(existeCapturaParaPeca(l,c))
+                    return true;
+            }
+        }
+    }
+
+    return false;
+}
+bool movimentoValidoBranca(int origemL,int origemC,int destinoL,int destinoC){
+    if(tabuleiro[destinoL][destinoC] != 0)
+        return false;
+
+    if(destinoL != origemL - 1)
+        return false;
+
+    if(abs(destinoC - origemC) != 1)
+        return false;
+
+    return true;
+}
+bool movimentoValidoPreta(int origemL,int origemC,int destinoL,int destinoC){
+    if(tabuleiro[destinoL][destinoC] != 0)
+        return false;
+
+    if(destinoL != origemL + 1)
+        return false;
+
+    if(abs(destinoC - origemC) != 1)
+        return false;
+
+    return true;
+}
+void trocaJogador(){
+    if(jogadorAtual == 1)
+        jogadorAtual = 2;
+    else
+        jogadorAtual = 1;
+}
+bool possuiMovimento(int jogador){
+    for(int l=0;l<tamanho;l++)
+    {
+        for(int c=0;c<tamanho;c++)
+        {
+            int p = tabuleiro[l][c];
+
+            if(jogador == 1 &&
+               !ehBranca(p))
+                continue;
+
+            if(jogador == 2 &&
+               !ehPreta(p))
+                continue;
+
+            if(existeCapturaParaPeca(l,c))
+                return true;
+
+            for(int dl=-1; dl<=1; dl+=2)
+            {
+                for(int dc=-1; dc<=1; dc+=2)
+                {
+                    int nl = l + dl;
+                    int nc = c + dc;
+
+                    if(nl < 0 ||
+                       nl >= tamanho ||
+                       nc < 0 ||
+                       nc >= tamanho)
+                        continue;
+
+                    if(tabuleiro[nl][nc]
+                        == VAZIO)
+                    {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    return false;
+}
+bool existePecaBranca(){
+    for(int l=0;l<tamanho;l++)
+    {
+        for(int c=0;c<tamanho;c++)
+        {
+            if(ehBranca(tabuleiro[l][c]))
+                return true;
+        }
+    }
+
+    return false;
+}
+bool existePecaPreta(){
+    for(int l=0;l<tamanho;l++)
+    {
+        for(int c=0;c<tamanho;c++)
+        {
+            if(ehPreta(tabuleiro[l][c]))
+                return true;
+        }
+    }
+
+    return false;
+}
+void tentaMover(){
+    int peca =
+        tabuleiro[origemLinha][origemColuna];
+
+    bool capturaObrigatoria =
+        jogadorTemCaptura();
+
+    bool movimento = false;
+
+    if(capturaValida(
+        origemLinha,
+        origemColuna,
+        cursorLinha,
+        cursorColuna,
+        peca))
+    {
+        movimento = true;
+
+        int meioL =
+            (origemLinha + cursorLinha)/2;
+
+        int meioC =
+            (origemColuna + cursorColuna)/2;
+
+        tabuleiro[meioL][meioC] = 0;
+    }
+    else if(!capturaObrigatoria)
+    {
+        movimento =
+            movimentoSimplesValido(
+                origemLinha,
+                origemColuna,
+                cursorLinha,
+                cursorColuna,
+                peca);
+    }
+
+    if(!movimento)
+        return;
+
+    tabuleiro[cursorLinha][cursorColuna]
+        = peca;
+
+    tabuleiro[origemLinha][origemColuna]
+        = 0;
+
+    if(peca == BRANCA &&
+       cursorLinha == 0)
+    {
+        tabuleiro[cursorLinha][cursorColuna]
+            = DAMA_BRANCA;
+    }
+
+    if(peca == PRETA &&
+       cursorLinha == tamanho-1)
+    {
+        tabuleiro[cursorLinha][cursorColuna]
+            = DAMA_PRETA;
+    }
+
+    bool houveCaptura = abs(cursorLinha-origemLinha) > 1;
+
+    if(houveCaptura && existeCapturaParaPeca(cursorLinha, cursorColuna)){
+    origemLinha = cursorLinha;
+    origemColuna = cursorColuna;
+
+    pecaSelecionada = true;
+
+    return;
+}
+    trocaJogador();
+    if(!possuiMovimento(jogadorAtual))
+{
+    jogoFinalizado = true;
+}
+}
+void render(){
+    CV::clear(0,0,0);
+
+    desenhaBotao();
+    CV::color(13);
+    CV::line(100.0,1.0,100.0,900.0);
+    desenhaTabuleiro();
+    desenhaPecas();
+    desenhaCursor();
+    CV::color(1,1,1);
+    if(jogadorAtual == 1)
+        CV::text(10,520,"Azul");
+    else
+        CV::text(10,520,"Vermelho");
+    if(!existePecaBranca()){
+        CV::color(1,1,0);
+        CV::text(350,500,"VERMELHAS VENCERAM");
+    }
+    if(!existePecaPreta()){
+        CV::color(1,1,0);
+        CV::text(350,500,"AZUIS VENCERAM");
+    }
+    if(jogoFinalizado)
+{
+    CV::color(1,1,0);
+
+    if(jogadorAtual == 1)
+        CV::text(
+            10,
+            480,
+            "AZUL VENCEU");
+
+    else
+        CV::text(
+            10,
+            480,
+            "VERMELHO VENCEU");
+}
+}
+void keyboard(int key){
+   if(jogoFinalizado)
+    return;
+   switch(key)
+   {
+      case 27: //finaliza programa
+	     exit(0);
+        break;
+
+	  case 201: // cima
+        if(cursorLinha < tamanho-1)
+            cursorLinha++;
+        break;
+
+      case 203: // baixo
+        if(cursorLinha > 0)
+            cursorLinha--;
+        break;
+
+      case 202: // direita
+        if(cursorColuna < tamanho-1)
+            cursorColuna++;
+        break;
+
+      case 200: // esquerda
+        if(cursorColuna > 0)
+            cursorColuna--;
+        break;
+
+      case 32:
+          if(!pecaSelecionada)
+{
+    int valor = tabuleiro[cursorLinha][cursorColuna];
+
+    if(jogadorAtual == 1 &&
+       (valor == 1 || valor == 3))
+    {
+        pecaSelecionada = true;
+
+        origemLinha = cursorLinha;
+        origemColuna = cursorColuna;
+    }
+
+    if(jogadorAtual == 2 &&
+       (valor == 2 || valor == 4))
+    {
+        pecaSelecionada = true;
+
+        origemLinha = cursorLinha;
+        origemColuna = cursorColuna;
+    }
+} else
+{
+    tentaMover();
+
+    pecaSelecionada = false;
+}
+   }
+}
+void keyboardUp(int key){
+   printf("\nLiberou tecla: %d" , key);
+}
+void mouse(int button, int state, int wheel, int direction, int x, int y){
+    mouseX = x;
+    mouseY = y;
+
+    if(button == GLUT_LEFT_BUTTON &&
+       state == GLUT_DOWN)
+    {
+        if(x >= botaoX &&
+           x <= botaoX + botaoLargura &&
+           y >= botaoY &&
+           y <= botaoY + botaoAltura)
+        {
+            aumentaTabuleiro();
+        }
+    }
+}
+
+int main(void)
+{
+    CV::init(&screenWidth, &screenHeight, "Jogo de Damas");
+    criaTabuleiro(8);
+    inicializaPecas();
+    CV::run();
+
+    return 0;
+}
